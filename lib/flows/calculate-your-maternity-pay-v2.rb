@@ -48,59 +48,50 @@ end
 # Question 2
 multiple_choice :are_you_employed? do
   option :yes
-option :no
+  option :no
 
-  next_node do |response|
-    if response == 'no'
-      if due_date >= ("2014-07-27")
-        :have_you_helped_partner_self_employed?
-      else
-        :will_you_work_at_least_26_weeks_during_test_period?
-      end
-    else
-      :did_you_start_26_weeks_before_qualifying_week?
-    end
+  next_node_if(:have_you_helped_partner_self_employed?) do |response|
+    response == 'no' && due_date >= ("2014-07-27")
   end
+  next_node_if(:will_you_work_at_least_26_weeks_during_test_period?) do |response|
+    response == 'no' && due_date < ("2014-07-27")
+  end
+  next_node(:did_you_start_26_weeks_before_qualifying_week?)
 end
 
 # Question 3
 multiple_choice :did_you_start_26_weeks_before_qualifying_week? do
   option :yes
   option :no
-  next_node do |response|
-    if response == 'yes'
-      # We assume that if they are employed, that means they are
-      # employed *today* and if today is after the start of the qualifying
-      # week we can skip that question
-      if Date.today < qualifying_week.first
-        :will_you_still_be_employed_in_qualifying_week?
-      else
-        :how_much_do_you_earn?
-      end
-    else
-      # If they weren't employed 26 weeks before qualifying week, there's no
-      # way they can qualify for SMP, so consider MA instead.
-      :will_you_work_at_least_26_weeks_during_test_period?
-    end
+
+  # We assume that if they are employed, that means they are
+  # employed *today* and if today is after the start of the qualifying
+  # week we can skip that question
+  next_node_if(:how_much_do_you_earn?) do |response|
+    response == 'yes' && Date.today >= qualifying_week.first
   end
+  next_node_if(:will_you_still_be_employed_in_qualifying_week?) do |response|
+    response == 'yes' && Date.today < qualifying_week.first
+  end
+
+  # If they weren't employed 26 weeks before qualifying week, there's no
+  # way they can qualify for SMP, so consider MA instead.
+  next_node(:will_you_work_at_least_26_weeks_during_test_period?)
 end
 
 # Question 4
 salary_question :how_much_do_you_earn? do
-  weekly_salary_90 = nil
-  next_node do |salary|
-    weekly_salary_90 = Money.new(salary.per_week * 0.9)
-    if salary.per_week >= smp_lel
-      # Outcome 2
-      :smp_from_employer
-    elsif salary.per_week >= 30 && salary.per_week < smp_lel
-      # Outcome 3
-      :you_qualify_for_maternity_allowance
-    else
-      # Outcome 1
-      :nothing_maybe_benefits
-    end
+  next_node_calculation(:weekly_salary_90) do |salary|
+    Money.new(salary.per_week * 0.9)
   end
+  # Outcome 2
+  next_node_if(:smp_from_employer) { |salary| salary.per_week >= smp_LEL }
+  # Outcome 3
+  next_node_if(:you_qualify_for_maternity_allowance) do |salary|
+    salary.per_week >= 30 && salary.per_week < smp_LEL
+  end
+  # Outcome 1
+  next_node(:nothing_maybe_benefits)
 
   calculate :eligible_amount do
     weekly_salary_90
@@ -141,35 +132,23 @@ end
 
 # Question 6
 multiple_choice :will_you_work_at_least_26_weeks_during_test_period? do
-  option :yes
-  option :no
-  next_node do |input|
-    if input == 'yes'
-      :how_much_did_you_earn_between?
-    else
-      # Outcome 1
-      :nothing_maybe_benefits
-    end
-  end
+  option yes: :how_much_did_you_earn_between?
+  option no: :nothing_maybe_benefits # Outcome 1
 end
 
 # Question 7
 salary_question :how_much_did_you_earn_between? do
-  weekly_salary_90 = nil
-  next_node do |earnings|
-    weekly_salary_90 = Money.new(earnings.per_week * 0.9)
-    if earnings.per_week >= 30.0
-      # Outcome 3
-      :you_qualify_for_maternity_allowance
-    else
-      # Outcome 1
-      :nothing_maybe_benefits
-    end
+  next_node_calculation(:weekly_salary_90) do |earnings|
+    Money.new(earnings.per_week * 0.9)
   end
 
-  calculate :weekly_salary_90 do
-    weekly_salary_90
+  # Outcome 3
+  next_node_if(:you_qualify_for_maternity_allowance) do |earnings|
+    earnings.per_week >= 30.0
   end
+
+  # Outcome 1
+  next_node(:nothing_maybe_benefits)
 
   calculate :eligible_amount do
     weekly_salary_90
@@ -185,23 +164,23 @@ salary_question :how_much_did_you_earn_between? do
   end
 end
 
- # Question 8
- multiple_choice :have_you_helped_partner_self_employed? do
-   option yes: :have_you_been_paid_for_helping_partner?
-   option no: :will_you_work_at_least_26_weeks_during_test_period?
- end
+# Question 8
+multiple_choice :have_you_helped_partner_self_employed? do
+  option yes: :have_you_been_paid_for_helping_partner?
+  option no: :will_you_work_at_least_26_weeks_during_test_period?
+end
 
- # Question 9
- multiple_choice :have_you_been_paid_for_helping_partner? do
-   option yes: :nothing_maybe_benefits
-   option no: :partner_helped_for_more_than_26weeks?
- end
+# Question 9
+multiple_choice :have_you_been_paid_for_helping_partner? do
+  option yes: :nothing_maybe_benefits
+  option no: :partner_helped_for_more_than_26weeks?
+end
 
- # Question 10
- multiple_choice :partner_helped_for_more_than_26weeks? do
-   option yes: :lower_maternity_allowance
-   option no: :nothing_maybe_benefits
- end
+# Question 10
+multiple_choice :partner_helped_for_more_than_26weeks? do
+  option yes: :lower_maternity_allowance
+  option no: :nothing_maybe_benefits
+end
 
 # Outcome 1
 outcome :nothing_maybe_benefits do
@@ -224,13 +203,13 @@ outcome :you_qualify_for_maternity_allowance do
   end
 end
 
- # Outcome 4
- outcome :lower_maternity_allowance do
-   precalculate :extra_help_phrase do
-     PhraseList.new(:extra_help)
-   end
+# Outcome 4
+outcome :lower_maternity_allowance do
+  precalculate :extra_help_phrase do
+    PhraseList.new(:extra_help)
+  end
 
-   precalculate :due_date_minus_11_weeks do
-     Date.parse(due_date) - 11.weeks
-   end
- end
+  precalculate :due_date_minus_11_weeks do
+    Date.parse(due_date) - 11.weeks
+  end
+end

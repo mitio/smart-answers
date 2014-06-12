@@ -3,26 +3,13 @@ satisfies_need "100233"
 
 # Q1
 multiple_choice :how_much_starch_glucose? do
-  option 0
-  option 5
-  option 25
-  option 50
-  option 75
+  option 0 => :how_much_sucrose_1?
+  option 5 => :how_much_sucrose_1?
+  option 25 => :how_much_sucrose_2?
+  option 50 => :how_much_sucrose_3?
+  option 75 => :how_much_sucrose_4?
 
   save_input_as :starch_glucose_weight
-
-  next_node do |response|
-    case response.to_i
-    when 25
-      :how_much_sucrose_2?
-    when 50
-      :how_much_sucrose_3?
-    when 75
-      :how_much_sucrose_4?
-    else
-      :how_much_sucrose_1?
-    end
-  end
 end
 
 # Q2ab
@@ -69,18 +56,18 @@ end
 
 # Q3
 multiple_choice :how_much_milk_fat? do
-  option 0
-  option 1
-  option 3
-  option 6
-  option 9
-  option 12
-  option 18
-  option 26
-  option 40
-  option 55
-  option 70
-  option 85
+  option 0 => :how_much_milk_protein_ab?
+  option 1 => :how_much_milk_protein_ab?
+  option 3 => :how_much_milk_protein_c?
+  option 6 => :how_much_milk_protein_d?
+  option 9 => :how_much_milk_protein_ef?
+  option 12 => :how_much_milk_protein_ef?
+  option 18 => :how_much_milk_protein_gh?
+  option 26 => :how_much_milk_protein_gh?
+  option 40 => :commodity_code_result
+  option 55 => :commodity_code_result
+  option 70 => :commodity_code_result
+  option 85 => :commodity_code_result
 
   calculate :calculator do
     Calculators::CommodityCodeCalculator.new(
@@ -102,23 +89,6 @@ multiple_choice :how_much_milk_fat? do
   end
 
   save_input_as :milk_fat_weight
-
-  next_node do |response|
-    case response.to_i
-    when 0, 1
-      :how_much_milk_protein_ab?
-    when 3
-      :how_much_milk_protein_c?
-    when 6
-      :how_much_milk_protein_d?
-    when 9, 12
-      :how_much_milk_protein_ef?
-    when 18, 26
-      :how_much_milk_protein_gh?
-    else
-      :commodity_code_result
-    end
-  end
 end
 
 # Q3ab

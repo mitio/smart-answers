@@ -16,15 +16,9 @@ multiple_choice :is_one_of_these_true? do
   option :naturalised
   option :uk_citizen_or_citizen_of_british_colony
   option :father_is_eligible
-  option :none_of_the_above
+  option none_of_the_above: :do_not_qualify
 
-  next_node do |response|
-    if response != 'none_of_the_above'
-      :date_of_birth?
-    else
-      :do_not_qualify
-    end
-  end
+  next_node(:date_of_birth?)
 end
 
 multiple_choice :describe_your_british_nationality? do
@@ -38,16 +32,10 @@ date_question :date_of_birth? do
   to { Date.parse('1 Jan 1896') }
   from { Date.today }
 
-  next_node do |response|
-    dob = Date.parse(response)
-    if dob <= Date.parse('1983-01-01')
-      :you_qualify
-    elsif dob > Date.parse('1983-01-01') and dob < Date.parse('2006-07-01')
-      :parents_married_at_birth?
-    else
-      :parent_eligibility_at_birth?
-    end
-  end
+  next_node_calculation(:dob) { |r| Date.parse(r) }
+  next_node_if(:you_qualify) { dob <= Date.parse('1983-01-01') }
+  next_node_if(:parents_married_at_birth?) { dob > Date.parse('1983-01-01') and dob < Date.parse('2006-07-01') }
+  next_node(:parent_eligibility_at_birth?)
 end
 
 multiple_choice :parents_married_at_birth? do

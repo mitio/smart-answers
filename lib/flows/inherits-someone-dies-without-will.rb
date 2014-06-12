@@ -21,25 +21,23 @@ end
 
 # Q2
 multiple_choice :partner? do
-  option :"yes"
-  option :"no"
+  option :yes
+  option :no
 
   save_input_as :partner
 
-  next_node do |response|
-    case region
-    when "england-and-wales", "northern-ireland"
-      response == "yes" ? :estate_over_250000? : :children?
-    when "scotland"
-      :children?
+  on_condition(responded_with('yes')) do
+    next_node_if(:estate_over_250000?) do
+      ["england-and-wales", "northern-ireland"].include?(region)
     end
   end
+  next_node(:children?)
 end
 
 # Q3
 multiple_choice :estate_over_250000? do
-  option :"yes"
-  option :"no"
+  option :yes => children?
+  option :no
 
   save_input_as :estate_over_250000
 
@@ -51,78 +49,54 @@ multiple_choice :estate_over_250000? do
     end
   end
 
-  next_node do |response|
-    case region
-    when "england-and-wales"
-      response == "yes" ? :children? : :outcome_1
-    when "northern-ireland"
-      response == "yes" ? :children? : :outcome_60
-    end
-  end
+  next_node_if(:outcome_1) { region == "england-and-wales" }
+  next_node_if(:outcome_60) { region == "northern-ireland" }
 end
 
 # Q4
 multiple_choice :children? do
-  option :"yes"
-  option :"no"
+  option :yes
+  option :no => parents?
 
   save_input_as :children
 
-  next_node do |response|
-    case region
-    when "england-and-wales"
-      if partner == "yes"
-        response == "yes" ? :outcome_20 : :parents?
-      else
-        response == "yes" ? :outcome_2 : :parents?
-      end
-    when "scotland"
-      if partner == "yes"
-        response == "yes" ? :outcome_40 : :parents?
-      else
-        response == "yes" ? :outcome_2 : :parents?
-      end
-    when "northern-ireland"
-      if partner == "yes"
-        response == "yes" ? :more_than_one_child? : :parents?
-      else
-        response == "yes" ? :outcome_66 : :parents?
-      end
-    end
+  on_condition(->(_) { partner == 'yes' } ) do
+    next_node_if(:outcome_20) { region == 'england-and-wales'}
+    next_node_if(:outcome_40) { region == 'scotland'}
+    next_node_if(:more_than_one_child?) { region == 'northern-ireland'}
+  end
+
+  on_condition(->(_) { partner == 'no' } ) do
+    next_node_if(:outcome_66) { region == 'northern-ireland'}
+    next_node(:outcome_2)
   end
 end
 
 # Q5
 multiple_choice :parents? do
-  option :"yes"
-  option :"no"
+  option :yes
+  option :no
 
   save_input_as :parents
 
-  next_node do |response|
-    case region
-    when "england-and-wales"
-      if partner == "yes"
-        response == "yes" ? :siblings? : :outcome_1
-      else
-        response == "yes" ? :outcome_3 : :siblings?
-      end
-    when "scotland"
-      :siblings?
-    when "northern-ireland"
-      if partner == "yes"
-        response == "yes" ? :outcome_63 : :siblings_including_mixed_parents?
-      else
-        response == "yes" ? :outcome_3 : :siblings?
-      end
+  next_node_if(:siblings?) { region == 'scotland' }
+
+  on_condition(->(_) { partner == 'yes' } ) do
+    on_condition(responded_with('yes')) do
+      next_node_if(:siblings?) { region == 'england-and-wales'}
+      next_node_if(:outcome_63) { region == 'northern-ireland'}
     end
+    next_node_if(:outcome_1) { region == 'england-and-wales'}
+    next_node_if(:siblings_including_mixed_parents?) { region == 'northern-ireland'}
   end
+  next_node_if(:outcome_3, responded_with('yes'))
+  next_node(:siblings?)
 end
 
 # Q6
 multiple_choice :siblings? do
-  option :"yes"
-  option :"no"
+  option :yes
+  option :no
 
   save_input_as :siblings
 
@@ -156,104 +130,70 @@ multiple_choice :siblings? do
       end
     end
   end
+  permitted_next_nodes(:outcome_22, :outcome_21, :outcome_22, :outcome_1, :outcome_43, :outcome_42, :outcome_41, :outcome_1, :outcome_44, :outcome_3, :outcome_4, :aunts_or_uncles?, :outcome_64, :outcome_65, :outcome_4, :grandparents?, :half_siblings?)
 end
 
 # Q61
 multiple_choice :siblings_including_mixed_parents? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_64
+  option :no => outcome_65
 
   save_input_as :siblings
-
-  next_node do |response|
-    response == "yes" ? :outcome_64 : :outcome_65
-  end
 end
 
 # Q7
 multiple_choice :grandparents? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_5
+  option :no
 
   save_input_as :grandparents
 
-  next_node do |response|
-    case region
-    when "england-and-wales"
-      response == "yes" ? :outcome_5 : :aunts_or_uncles?
-    when "scotland"
-      response == "yes" ? :outcome_5 : :great_aunts_or_uncles?
-    when "northern-ireland"
-      response == "yes" ? :outcome_5 : :aunts_or_uncles?
-    end
-  end
+  next_node_if(:great_aunts_or_uncles?) { region == 'scotland'}
+  next_node(:aunts_or_uncles?)
 end
 
 # Q8
 multiple_choice :aunts_or_uncles? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_6
+  option :no
 
   save_input_as :aunts_or_uncles
 
-  next_node do |response|
-    case region
-    when "england-and-wales"
-      response == "yes" ? :outcome_6 : :half_aunts_or_uncles?
-    when "scotland"
-      response == "yes" ? :outcome_6 : :grandparents?
-    when "northern-ireland"
-      response == "yes" ? :outcome_6 : :outcome_67
-    end
-  end
+  next_node_if(:half_aunts_or_uncles?) { region == 'england-and-wales'}
+  next_node_if(:grandparents?) { region == 'scotland'}
+  next_node_if(:outcome_67) { region == 'northern-ireland'}
 end
 
 # Q20
 multiple_choice :half_siblings? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_23
+  option :no => grandparents?
 
   save_input_as :half_siblings
-
-  next_node do |response|
-    response == "yes" ? :outcome_23 : :grandparents?
-  end
 end
 
 # Q21
 multiple_choice :half_aunts_or_uncles? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_24
+  option :no => outcome_25
 
   save_input_as :half_aunts_or_uncles
-
-  next_node do |response|
-    response == "yes" ? :outcome_24 : :outcome_25
-  end
 end
 
 # Q40
 multiple_choice :great_aunts_or_uncles? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_45
+  option :no => outcome_46
 
   save_input_as :great_aunts_or_uncles
-
-  next_node do |response|
-    response == "yes" ? :outcome_45 : :outcome_46
-  end
 end
 
 # Q60
 multiple_choice :more_than_one_child? do
-  option :"yes"
-  option :"no"
+  option :yes => outcome_61
+  option :no => outcome_62
 
   save_input_as :more_than_one_child
-
-  next_node do |response|
-    response == "yes" ? :outcome_61 : :outcome_62
-  end
 end
 
 outcome :outcome_1

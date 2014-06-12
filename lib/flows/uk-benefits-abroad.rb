@@ -2,7 +2,7 @@ status :draft
 satisfies_need "100490"
 
 exclude_countries = %w(holy-see british-antarctic-territory)
-situations = ['going_abroad','already_abroad']
+situations = ['going_abroad', 'already_abroad']
 going_abroad = SmartAnswer::Predicate::VariableMatches.new(:going_or_already_abroad, 'going_abroad', nil, 'going abroad')
 already_abroad = SmartAnswer::Predicate::VariableMatches.new(:going_or_already_abroad, 'already_abroad', nil, 'already abroad')
 responded_with_eea_country = SmartAnswer::Predicate::RespondedWith.new(
@@ -68,15 +68,15 @@ end
 multiple_choice :which_benefit? do
   option :jsa
   option :pension
-  option :winter_fuel_payment => :which_country_wfp? # Q4
-  option :maternity_benefits => :channel_islands? # Q3b
-  option :child_benefit => :channel_islands? # Q3b
-  option :iidb => :iidb_already_claiming? # Q22
-  option :ssp => :which_country_ssp? # Q11
-  option :esa => :esa_how_long_abroad? # Q20
-  option :disability_benefits => :db_how_long_abroad? # Q24
-  option :bereavement_benefits => :channel_islands? # Q3b
-  option :tax_credits => :eligible_for_tax_credits? # Q14
+  option winter_fuel_payment: :which_country_wfp? # Q4
+  option maternity_benefits: :channel_islands? # Q3b
+  option child_benefit: :channel_islands? # Q3b
+  option iidb: :iidb_already_claiming? # Q22
+  option ssp: :which_country_ssp? # Q11
+  option esa: :esa_how_long_abroad? # Q20
+  option disability_benefits: :db_how_long_abroad? # Q24
+  option bereavement_benefits: :channel_islands? # Q3b
+  option tax_credits: :eligible_for_tax_credits? # Q14
   option :income_support
 
   save_input_as :benefit
@@ -203,7 +203,7 @@ end
 
 # Q8
 multiple_choice :employer_paying_ni? do
-  option :yes => :eligible_for_smp?
+  option yes: :eligible_for_smp?
   option :no
 
   on_condition(variable_matches(:country, countries_of_former_yugoslavia + %w(barbados guernsey_jersey israel turkey))) do
@@ -299,9 +299,9 @@ end
 
 # Q14
 multiple_choice :eligible_for_tax_credits? do
-  option :crown_servant => :tax_credits_crown_servant_outcome # A27
-  option :cross_border_worker => :tax_credits_cross_border_worker_outcome # A28
-  option :none_of_the_above => :tax_credits_how_long_abroad?
+  option crown_servant: :tax_credits_crown_servant_outcome # A27
+  option cross_border_worker: :tax_credits_cross_border_worker_outcome # A28
+  option none_of_the_above: :tax_credits_how_long_abroad?
 end
 
 # Q15
@@ -429,7 +429,7 @@ end
 # Q24
 multiple_choice :db_how_long_abroad? do
   option :temporary
-  option :permanent => :which_country_disability_benefits? # Q25
+  option permanent: :which_country_disability_benefits? # Q25
 
   next_node_if(:db_going_abroad_temporary_outcome, going_abroad) # A48
   next_node(:db_already_abroad_temporary_outcome) # A49

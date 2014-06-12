@@ -21,13 +21,8 @@ multiple_choice :inheritance_tax? do
     responses.last == "yes"
   end
 
-  next_node do
-    if where_lived == "northern_ireland"
-      :which_ni_county?
-    else
-      :amount_left_en_sco?
-    end
-  end
+  next_node_if(:which_ni_county?) { where_lived == "northern_ireland" }
+  next_node(:amount_left_en_sco?)
 end
 
 ## Q3
@@ -45,17 +40,9 @@ multiple_choice :amount_left_en_sco? do
     end
   end
 
-  next_node do
-    if where_lived == "england_or_wales"
-      :done_eng_wales
-    else
-      if where_lived == "scotland"
-        :done_scotland
-      else
-        :done_ni
-      end
-    end
-  end
+  next_node_if(:done_eng_wales) { where_lived == "england_or_wales" }
+  next_node_if(:done_scotland) { where_lived == "scotland" }
+  next_node_if(:done_ni)
 end
 
 ## Q4

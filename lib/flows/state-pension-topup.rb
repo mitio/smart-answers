@@ -10,16 +10,10 @@ date_question :dob_age? do
 
   save_input_as :date_of_birth
 
-  next_node do |response|
-    dob = Date.parse(response)
-    if (dob < (Date.parse('2015-10-12') - 101.years))
-      :outcome_age_limit_reached_birth
-    elsif (dob > Date.parse('1953-04-06'))
-      :outcome_pension_age_not_reached
-    else
-      :how_much_extra_per_week?
-    end
-  end
+  next_node_calculation(:dob) { |response| Date.parse(response) }
+  next_node_if(:outcome_age_limit_reached_birth) { (dob < (Date.parse('2015-10-12') - 101.years)) }
+  next_node_if(:outcome_pension_age_not_reached) { (dob > Date.parse('1953-04-06')) }
+  next_node(:how_much_extra_per_week?)
 end
 
 #Q2
@@ -40,24 +34,13 @@ date_question :date_of_lump_sum_payment? do
   from { Date.parse('12 Oct 2015') }
   to { Date.parse('01 April 2017') }
 
-  save_input_as :age_at_date_of_payment
+  next_node_calculation(:date_of_payment) { |response| Date.parse(response) }
+  next_node_calculation(:age_at_date_of_payment) { date_of_payment.year - dob.year }
 
-  calculate :date_of_payment do
-    Date.parse(responses.last)
-  end
+  validate { date_of_payment >= Date.parse('2015-10-12') and date_of_payment <= Date.parse('2017-04-01') }
 
-  next_node do |response|
-    date_paying = Date.parse(response)
-    dob = Date.parse(date_of_birth)
-
-    if date_paying < Date.parse('2015-10-12') or date_paying > Date.parse('2017-04-01')
-      raise SmartAnswer::InvalidResponse
-    elsif (date_paying.year - dob.year) > 100
-      :outcome_age_limit_reached_payment
-    else
-      :gender?
-    end
-  end
+  next_node_if(:outcome_age_limit_reached_payment) { age_at_date_of_payment > 100 }
+  next_node(:gender?)
 end
 
 #Q4
@@ -67,22 +50,10 @@ multiple_choice :gender? do
 
   save_input_as :gender
 
-  calculate :age_at_date_of_payment do
-    date_paying = Date.parse(age_at_date_of_payment)
-    dob = Date.parse(date_of_birth)
-    age_when_paying = (date_paying.year - dob.year)
-    age_when_paying
+  next_node_if(:outcome_pension_age_not_reached) do |response|
+    (response == "male") and (dob > Date.parse('1951-04-06'))
   end
-
-  next_node do |response|
-
-    dob = Date.parse(date_of_birth)
-    if (response == "male") and (dob > Date.parse('1951-04-06'))
-      :outcome_pension_age_not_reached
-    else
-      :outcome_qualified_for_top_up_calculations
-    end
-  end
+  next_node(:outcome_qualified_for_top_up_calculations)
 end
 
 #A1
@@ -107,9 +78,4 @@ outcome :outcome_pension_age_not_reached
 outcome :outcome_age_limit_reached_birth
 
 #A4
-outcome :outcome_age_limit_reached_payment do
-
-  precalculate :age_at_date_of_payment do
-    Date.parse(age_at_date_of_payment)
-  end
-end
+outcome :outcome_age_limit_reached_payment

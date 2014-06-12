@@ -10,13 +10,10 @@ multiple_choice :what_is_your_quest? do
   option :to_rescue_the_princess
   option :dunno
 
-  next_node do |response|
-    if your_name =~ /robin/i and response == 'to_seek_the_holy_grail'
-      :what_is_the_capital_of_assyria?
-    else
-      :what_is_your_favorite_colour?
-    end
+  next_node_if(:what_is_the_capital_of_assyria?) do |response|
+    your_name =~ /robin/i and response == 'to_seek_the_holy_grail'
   end
+  next_node(:what_is_your_favorite_colour?)
 end
 
 value_question :what_is_the_capital_of_assyria? do

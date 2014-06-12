@@ -89,8 +89,8 @@ end
 
 # Q5
 multiple_choice :where_are_you_now? do
-  option :same_country
-  option :another_country
+  option same_country: :embassy_result
+  option another_country: :which_country?
   option :in_the_uk
 
   calculate :another_country do

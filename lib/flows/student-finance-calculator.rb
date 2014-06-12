@@ -50,17 +50,9 @@ money_question :how_much_are_your_tuition_fees_per_year? do
     PhraseList.new(:tuition_fee_loan)
   end
 
-  next_node do
-    case course_type
-    when 'uk-full-time'
-      :where_will_you_live_while_studying?
-    when 'uk-part-time'
-      :do_any_of_the_following_apply_all_uk_students?
-    when 'eu-full-time', 'eu-part-time'
-      :outcome_eu_students
-    end
-  end
-
+  next_node_if(:where_will_you_live_while_studying?, variable_matches(:course_type, 'uk-full-time'))
+  next_node_if(:do_any_of_the_following_apply_all_uk_students?, variable_matches(:course_type, 'uk-part-time'))
+  next_node_if(:outcome_eu_students, variable_matches(:course_type, %w{eu-full-time eu-part-time}))
 end
 #Q4
 multiple_choice :where_will_you_live_while_studying? do
@@ -190,17 +182,9 @@ multiple_choice :what_course_are_you_studying? do
 
   save_input_as :course_studied
 
-  next_node do
-    case course_type
-    when 'uk-full-time'
-      :outcome_uk_full_time_students
-    when 'uk-part-time'
-      :outcome_uk_all_students
-    else
-      :outcome_eu_students
-    end
-  end
-
+  next_node_if(:outcome_uk_full_time_students) { course_type == 'uk-full-time' }
+  next_node_if(:outcome_uk_all_students) { course_type == 'uk-part-time' }
+  next_node_if(:outcome_eu_students) { %w{eu-full-time eu-part-time}.include?(course_type) }
 end
 
 outcome :outcome_uk_full_time_students do

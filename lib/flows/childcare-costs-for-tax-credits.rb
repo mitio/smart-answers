@@ -61,10 +61,9 @@ money_question :how_much_52_weeks_2? do
     SmartAnswer::Calculators::ChildcareCostCalculator.weekly_cost(responses.last)
   end
 
-  next_node do |response|
-    amount = Money.new(response)
-    amount == 0 ? :no_longer_paying : :old_weekly_amount_1?
-  end
+  next_node_calculation(:amount) { |response| Money.new(response) }
+  next_node_if(:no_longer_paying) { amount == 0 }
+  next_node(:old_weekly_amount_1?)
 end
 
 #Q9
@@ -72,10 +71,9 @@ money_question :how_much_12_months_2? do
   calculate :weekly_cost do
     SmartAnswer::Calculators::ChildcareCostCalculator.weekly_cost(responses.last)
   end
-  next_node do |response|
-    amount = Money.new(response)
-    amount == 0 ? :no_longer_paying : :old_weekly_amount_1?
-  end
+  next_node_calculation(:amount) { |response| Money.new(response) }
+  next_node_if(:no_longer_paying) { amount == 0 }
+  next_node(:old_weekly_amount_1?)
 end
 
 #Q10
@@ -141,10 +139,9 @@ money_question :new_weekly_costs? do
   calculate :new_weekly_costs do
     Float(responses.last).ceil
   end
-  next_node do |response|
-    amount = Money.new(response)
-    amount == 0 ? :no_longer_paying : :old_weekly_amount_2?
-  end
+  next_node_calculation(:amount) { |response| Money.new(response) }
+  next_node_if(:no_longer_paying) { amount == 0 }
+  next_node(:old_weekly_amount_2?)
 end
 
 #Q18
@@ -172,10 +169,9 @@ money_question :new_monthly_cost? do
     SmartAnswer::Calculators::ChildcareCostCalculator.weekly_cost_from_monthly(responses.last)
   end
 
-  next_node do |response|
-    amount = Money.new(response)
-    amount == 0 ? :no_longer_paying : :old_weekly_amount_3?
-  end
+  next_node_calculation(:amount) { |response| Money.new(response) }
+  next_node_if(:no_longer_paying) { amount == 0 }
+  next_node(:old_weekly_amount_3?)
 end
 
 #Q20

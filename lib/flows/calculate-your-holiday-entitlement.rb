@@ -30,6 +30,7 @@ multiple_choice :calculation_period? do
       calculation_basis == "days-worked-per-week" ? :how_many_days_per_week? : :how_many_hours_per_week?
     end
   end
+  permitted_next_nodes(:what_is_your_starting_date?, :what_is_your_leaving_date?, :how_many_days_per_week?, :how_many_hours_per_week?)
 end
 
 # Q3
@@ -76,6 +77,7 @@ date_question :what_is_your_starting_date? do
       :when_does_your_leave_year_start?
     end
   end
+  permitted_next_nodes(:what_is_your_leaving_date?, :when_does_your_leave_year_start?)
 end
 
 # Q5
@@ -98,6 +100,7 @@ date_question :what_is_your_leaving_date? do
       :when_does_your_leave_year_start?
     end
   end
+  permitted_next_nodes(:how_many_days_per_week?, :how_many_hours_per_week?, :shift_worker_hours_per_shift?, :when_does_your_leave_year_start?)
 end
 
 # Q21
@@ -115,6 +118,7 @@ date_question :when_does_your_leave_year_start? do
       :shift_worker_hours_per_shift?
     end
   end
+  permitted_next_nodes(:how_many_days_per_week?, :how_many_hours_per_week?, :shift_worker_hours_per_shift?)
 end
 
 # Q10

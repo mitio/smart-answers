@@ -22,12 +22,8 @@ multiple_choice :adult_or_child_passport? do
     age == 'child' ? PhraseList.new(:child_forms) : PhraseList.new
   end
 
-  next_node do
-    case lost_or_stolen
-    when 'lost' then :where_was_the_passport_lost?
-    when 'stolen' then :where_was_the_passport_stolen?
-    end
-  end
+  next_node_if(:where_was_the_passport_lost?, variable_matches(:lost_or_stolen, 'lost'))
+  next_node_if(:where_was_the_passport_stolen?, variable_matches(:lost_or_stolen, 'stolen'))
 end
 
 multiple_choice :where_was_the_passport_stolen? do

@@ -6,6 +6,10 @@ situations = ['going_abroad', 'already_abroad']
 eea_countries = %w(austria belgium bulgaria cyprus czech-republic denmark estonia finland france germany gibraltar greece hungary iceland ireland italy latvia liechtenstein lithuania luxembourg malta netherlands norway poland portugal romania slovakia slovenia spain sweden switzerland)
 former_yugoslavia = %w(croatia bosnia-and-herzegovina kosovo macedonia montenegro serbia)
 social_security_countries = former_yugoslavia + %w(guernsey jersey new-zealand)
+maternity_ss_countries = social_security_countries + %w(barbados israel jersey turkey)
+
+# Predicates
+p_eea_country = ->(response) { eea_countries.include?(response) }
 
 # Q1
 multiple_choice :going_or_already_abroad? do
@@ -36,15 +40,11 @@ country_select :which_country_jsa? do
       PhraseList.new key
     end
   end
-  next_node do |response|
-    if eea_countries.include?(response)
-      :"jsa_eea_#{going_or_already_abroad}" # A3
-    elsif social_security_countries.include?(response)
-      :jsa_social_security # A4
-    else
-      :jsa_not_entitled # A5
-    end
-  end
+
+  next_node_if(:jsa_eea_going_abroad) {|r| going_or_already_abroad == 'going_abroad' && eea_countries.include?(r) }
+  next_node_if(:jsa_eea_already_abroad) {|r| going_or_already_abroad == 'already_abroad' && eea_countries.include?(r) }
+  next_node_if(:jsa_social_security) {|r| social_security_countries.include?(r) }
+  next_node(:jsa_not_entitled) # A5
 end
 # Q4
 country_select :which_country_wfp? do
@@ -54,13 +54,8 @@ country_select :which_country_wfp? do
       PhraseList.new key
     end
   end
-  next_node do |response|
-    if eea_countries.include?(response)
-      :qualify_for_wfp? # Q5
-    else
-      :wfp_not_entitled # A6
-    end
-  end
+  next_node_if(:qualify_for_wfp?, &p_eea_country) # Q5
+  next_node(:wfp_not_entitled) # A6
 end
 # Q5
 multiple_choice :qualify_for_wfp? do
@@ -76,13 +71,8 @@ country_select :which_country_maternity? do
       PhraseList.new key
     end
   end
-  next_node do |response|
-    if eea_countries.include?(response)
-      :working_for_a_uk_employer? # Q7
-    else
-      :employer_paying_ni? # Q9, Q10
-    end
-  end
+  next_node_if(:working_for_a_uk_employer?, &p_eea_country) # Q7
+  next_node(:employer_paying_ni?) # Q9, Q10
 end
 # Q7
 multiple_choice :working_for_a_uk_employer? do
@@ -104,16 +94,9 @@ end
 multiple_choice :employer_paying_ni? do
   option :yes
   option :no
-  next_node do |response|
-    maternity_ss_countries = social_security_countries + %w(barbados israel jersey turkey)
-    if response == 'yes'
-      :eligible_for_maternity_pay? # Q8
-    elsif maternity_ss_countries.include?(maternity_country)
-      :maternity_allowance # A10
-    else
-      :maternity_not_entitled # A11
-    end
-  end
+  next_node_if(:eligible_for_maternity_pay?) {|r| r == "yes"}  # Q8
+  next_node_if(:maternity_allowance) { maternity_ss_countries.include?(maternity_country) } # A10
+  next_node(:maternity_not_entitled) # A11
 end
 # Q11
 country_select :which_country_cb? do
@@ -123,19 +106,11 @@ country_select :which_country_cb? do
       PhraseList.new key
     end
   end
-  next_node do |response|
-    if eea_countries.include?(response)
-      :do_either_of_the_following_apply? # Q12
-    elsif former_yugoslavia.include?(response)
-      :cb_fy_social_security_outcome # A12
-    elsif %w(barbados canada guernsey israel jersey mauritius new-zealand).include?(response)
-      :cb_social_security_outcome # A13
-    elsif %w(jamaica turkey united-states).include?(response)
-      :cb_jtu_not_entitled # A14
-    else
-      :cb_not_entitled # A16
-    end
-  end
+  next_node_if(:do_either_of_the_following_apply?, &p_eea_country) # Q12
+  next_node_if(:cb_fy_social_security_outcome) { |r| former_yugoslavia.include?(r)} # A12
+  next_node_if(:cb_social_security_outcome) { |r| %w(barbados canada guernsey israel jersey mauritius new-zealand).include?(r) } # A13
+  next_node_if(:cb_jtu_not_entitled) { |r| %w(jamaica turkey united-states).include?(r) } # A14
+  next_node(:cb_not_entitled) # A16
 end
 # Q12
 multiple_choice :do_either_of_the_following_apply? do
@@ -150,13 +125,8 @@ country_select :which_country_ssp? do
       PhraseList.new key
     end
   end
-  next_node do |response|
-    if eea_countries.include?(response)
-      :working_for_a_uk_employer_ssp? # Q14
-    else
-      :employer_paying_ni_ssp? # Q15
-    end
-  end
+  next_node_if(:working_for_a_uk_employer_ssp?, &p_eea_country) # Q14
+  next_node(:employer_paying_ni_ssp?) # Q15
 end
 # Q14
 multiple_choice :working_for_a_uk_employer_ssp? do
@@ -198,13 +168,8 @@ country_select :where_tax_credits? do
       PhraseList.new key
     end
   end
-  next_node do |response|
-    if eea_countries.include?(response)
-      :currently_claiming? # Q20
-    else
-      :tax_credits_unlikely # A19
-    end
-  end
+  next_node_if(:currently_claiming?, &p_eea_country) # Q20
+  next_node(:tax_credits_unlikely) # A19
 end
 # Q20
 multiple_choice :currently_claiming? do
@@ -236,13 +201,8 @@ multiple_choice :how_long_are_you_abroad_for_esa? do
 end
 # Q24
 country_select :which_country_esa?, use_legacy_data: true do
-  next_node do |response|
-    if eea_countries.include?(response)
-      :esa_eligible_possible # A27
-    else
-      :esa_not_entitled # A28
-    end
-  end
+  next_node_if(:esa_eligible_possible, &p_eea_country) # A27
+  next_node(:esa_not_entitled) # A28
 end
 # Q25
 multiple_choice :already_claiming_iidb? do
@@ -250,36 +210,24 @@ multiple_choice :already_claiming_iidb? do
   option no: :iidb_possible_with_ni # A29
 end
 # Q26
-country_select :which_country_iidb?, use_legacy_data: true do
-  next_node do |response|
-    iidb_ss_countries = %w(barbados bermuda bosnia-and-herzegovina croatia guernsey israel
-                           jamaica jersey kosovo macedonia malta mauritius montenegro
-                           philippines serbia)
 
-    if eea_countries.include?(response)
-      :iidb_outcome # A30
-    elsif iidb_ss_countries.include?(response)
-      :iidb_ss_possible # A31
-    else
-      :iidb_not_entitled # A32
-    end
-  end
+country_select :which_country_iidb?, use_legacy_data: true do
+  iidb_ss_countries = %w(barbados bermuda bosnia-and-herzegovina croatia guernsey israel
+                         jamaica jersey kosovo macedonia malta mauritius montenegro
+                         philippines serbia)
+  next_node_if(:iidb_outcome, &p_eea_country) # A30
+  next_node_if(:iidb_ss_possible) { |r| iidb_ss_countries.include?(r) } # A31
+  next_node(:iidb_not_entitled) # A32
 end
 
 # Q32
 country_select :which_country_bereavement? do
-  next_node do |response|
-    bereavement_ss_countries = %w(barbados bermuda bosnia-and-herzegovina canada croatia
-                                  guernsey israel jamaica jersey kosovo macedonia malta
-                                  mauritius montenegro philippines serbia turkey united-states)
-    if eea_countries.include?(response)
-      :bereavement_outcome # A36
-    elsif bereavement_ss_countries.include?(response)
-      :bereavement_benefit_possible # A37
-    else
-      :bereavement_not_entitled # A38
-    end
-  end
+  bereavement_ss_countries = %w(barbados bermuda bosnia-and-herzegovina canada croatia
+                                guernsey israel jamaica jersey kosovo macedonia malta
+                                mauritius montenegro philippines serbia turkey united-states)
+  next_node_if(:bereavement_outcome, &p_eea_country) # A36
+  next_node_if(:bereavement_benefit_possible) { |r| bereavement_ss_countries.include?(r) } # A37
+  next_node(:bereavement_not_entitled) # A38
 end
 
 # A1

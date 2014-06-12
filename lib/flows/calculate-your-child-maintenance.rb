@@ -19,19 +19,11 @@ end
 ## Q2
 multiple_choice :gets_benefits? do
   save_input_as :benefits
-  option "yes"
-  option "no"
+  option "yes" => :how_many_nights_children_stay_with_payee?
+  option "no" => :gross_income_of_payee?
 
   calculate :calculator do
     Calculators::ChildMaintenanceCalculator.new(number_of_children, benefits)
-  end
-
-  next_node do |response|
-    if response == 'yes'
-      :how_many_nights_children_stay_with_payee?
-    else
-      :gross_income_of_payee?
-    end
   end
 end
 
@@ -40,15 +32,15 @@ money_question :gross_income_of_payee? do
   calculate :flat_rate_amount do
     calculator.base_amount
   end
-  next_node do |response|
+
+  next_node_calculation(:rate_type) do |response|
     calculator.income = response
-    rate_type = calculator.rate_type
-    if [:nil, :flat].include?(rate_type)
-      "#{rate_type.to_s}_rate_result".to_sym
-    else
-      :how_many_other_children_in_payees_household?
-    end
+    calculator.rate_type
   end
+
+  next_node_if(:nil_rate_result) { rate_type == :nil }
+  next_node_if(:flat_rate_result) { rate_type == :flat }
+  next_node(:how_many_other_children_in_payees_household?)
 end
 
 ## Q4
@@ -75,15 +67,15 @@ multiple_choice :how_many_nights_children_stay_with_payee? do
     calculator.number_of_shared_care_nights = responses.last.to_i
     sprintf("%.0f", calculator.calculate_maintenance_payment)
   end
-  next_node do |response|
+
+  next_node_calculation(:rate_type) do |response|
     calculator.number_of_shared_care_nights = response.to_i
-    rate_type = calculator.rate_type
-    if [:nil, :flat].include?(rate_type)
-      "#{rate_type.to_s}_rate_result".to_sym
-    else
-      :reduced_and_basic_rates_result
-    end
+    calculator.rate_type
   end
+
+  next_node_if(:nil_rate_result) { rate_type == :nil }
+  next_node_if(:flat_rate_result) { rate_type == :flat }
+  next_node(:reduced_and_basic_rates_result)
 end
 
 outcome :nil_rate_result do

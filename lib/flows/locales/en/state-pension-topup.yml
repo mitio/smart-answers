@@ -83,4 +83,4 @@ en-GB:
 #Outcome A4   
       outcome_age_limit_reached_payment:
         title: |
-          You must be under 101 years old on %{age_at_date_of_payment} to use State Pension top up
+          You must be under 101 years old on %{date_of_payment} to use State Pension top up

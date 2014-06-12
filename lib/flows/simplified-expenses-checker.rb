@@ -30,41 +30,24 @@ checkbox_question :type_of_expense? do
     responses.last == "none" ? [] : responses.last.split(",")
   end
 
-  next_node do |response|
-    next_question = nil
-    if response == "none"
-      :you_cant_use_result
-    else
-      responses = response.split(",")
-      raise InvalidResponse if response =~ /live_on_business_premises.*?using_home_for_business/
-      if (responses & ["car_or_van", "motorcycle"]).any?
-        :buying_new_vehicle?
-      elsif responses.include?("using_home_for_business")
-        :hours_work_home?
-      elsif responses.include?("live_on_business_premises")
-        :deduct_from_premises?
-      end
-    end
+  validate do |response|
+    (response.split(',') & %w{live_on_business_premises using_home_for_business}).size != 2
   end
+
+  next_node_if(:you_cant_use_result) { |response| response == "none" }
+  next_node_if(:buying_new_vehicle?, response_is_one_of(%w{car_or_van motorcycle}))
+  next_node_if(:hours_work_home?, response_is_one_of(%w{using_home_for_business}))
+  next_node_if(:deduct_from_premises?, response_is_one_of(%w{live_on_business_premises}))
 end
 
 #Q3 - buying new vehicle?
 multiple_choice :buying_new_vehicle? do
-  option :yes
+  option yes: :is_vehicle_green?
   option :no
 
-  next_node do |response|
-    if response == "yes"
-      :is_vehicle_green?
-    else
-      if is_existing_business
-        :capital_allowances?
-      else
-        :how_much_expect_to_claim?
-      end
-    end
-  end
-
+  next_node_if(:is_vehicle_green?, responded_with('yes'))
+  next_node_if(:capital_allowances?) { is_existing_business }
+  next_node(:how_much_expect_to_claim?)
 end
 
 #Q4 - capital allowances claimed?
@@ -81,37 +64,22 @@ multiple_choice :capital_allowances? do
     responses.last == "yes" and (list_of_expenses & %w(using_home_for_business live_on_business_premises)).any?
   end
 
-  next_node do |response|
-    if response == "yes"
-      if (list_of_expenses & %w(using_home_for_business live_on_business_premises)).any?
-        if list_of_expenses.include?("using_home_for_business")
-          # Q11
-          :hours_work_home?
-        else
-          # Q13
-          :deduct_from_premises?
-        end
-      else
-        :capital_allowance_result
-      end
-    else
-      :how_much_expect_to_claim?
-    end
+  on_condition(responded_with('yes')) do
+    # Q11
+    next_node_if(:hours_work_home?) { list_of_expenses.include?("using_home_for_business") }
+    # Q13
+    next_node_if(:deduct_from_premises?) { list_of_expenses.include?("live_on_business_premises") }
+    next_node(:capital_allowance_result)
   end
-
+  next_node(:how_much_expect_to_claim?)
 end
 
 #Q5 - claim vehicle expenses
 money_question :how_much_expect_to_claim? do
   save_input_as :vehicle_costs
 
-  next_node do
-    if list_of_expenses.include?("car_or_van")
-      :drive_business_miles_car_van?
-    else
-      :drive_business_miles_motorcycle?
-    end
-  end
+  next_node_if(:drive_business_miles_car_van?) { list_of_expenses.include?("car_or_van") }
+  next_node(:drive_business_miles_motorcycle?)
 end
 
 #Q6 - is vehicle green?
@@ -162,11 +130,10 @@ value_question :vehicle_business_use_time? do
     vehicle_is_green ? nil : Money.new(dirty_vehicle_price * ( business_use_percent / 100))
   end
 
-  next_node do |response|
-    raise InvalidResponse if response.to_i > 100
-    list_of_expenses.include?("car_or_van") ?
-      :drive_business_miles_car_van? : :drive_business_miles_motorcycle?
-  end
+  validate { |response| response.to_i <= 100 }
+
+  next_node_if(:drive_business_miles_car_van?) { list_of_expenses.include?("car_or_van") }
+  next_node(:drive_business_miles_motorcycle?)
 end
 
 #Q9 - miles to drive for business car_or_van
@@ -183,17 +150,10 @@ value_question :drive_business_miles_car_van? do
       Money.new(4500.0 + answer_over_amount)
     end
   end
-  next_node do
-    if list_of_expenses.include?("motorcycle")
-      :drive_business_miles_motorcycle?
-    elsif list_of_expenses.include?("using_home_for_business")
-      :hours_work_home?
-    elsif list_of_expenses.include?("live_on_business_premises")
-      :deduct_from_premises?
-    else
-      :you_can_use_result
-    end
-  end
+  next_node_if(:drive_business_miles_motorcycle?) { list_of_expenses.include?("motorcycle") }
+  next_node_if(:hours_work_home?) { list_of_expenses.include?("using_home_for_business") }
+  next_node_if(:deduct_from_premises?) { list_of_expenses.include?("live_on_business_premises") }
+  next_node(:you_can_use_result)
 end
 
 #Q10 - miles to drive for business motorcycle
@@ -201,15 +161,10 @@ value_question :drive_business_miles_motorcycle? do
   calculate :simple_motorcycle_costs do
     Money.new(responses.last.gsub(",", "").to_f * 0.24)
   end
-  next_node do
-    if list_of_expenses.include?("using_home_for_business")
-      :hours_work_home?
-    elsif list_of_expenses.include?("live_on_business_premises")
-      :deduct_from_premises?
-    else
-      :you_can_use_result
-    end
-  end
+
+  next_node_if(:hours_work_home?) { list_of_expenses.include?("using_home_for_business") }
+  next_node_if(:deduct_from_premises?) { list_of_expenses.include?("live_on_business_premises") }
+  next_node(:you_can_use_result)
 end
 
 #Q11 - hours for home work
@@ -229,26 +184,17 @@ value_question :hours_work_home? do
     Money.new(amount)
   end
 
-  next_node do |response|
-    hours = response.to_i
-    if hours < 1
-      raise SmartAnswer::InvalidResponse
-    elsif hours < 25
-      :you_cant_use_result
-    else
-      :current_claim_amount_home?
-    end
-  end
+  validate { |response| response.to_i >= 1 }
+  next_node_if(:you_cant_use_result) { |response| response.to_i < 25 }
+  next_node(:current_claim_amount_home?)
 end
 
 #Q12 - how much do you claim?
 money_question :current_claim_amount_home? do
   save_input_as :home_costs
 
-  next_node do
-    list_of_expenses.include?("live_on_business_premises") ? :deduct_from_premises? : :you_can_use_result
-  end
-
+  next_node_if(:deduct_from_premises?) { list_of_expenses.include?("live_on_business_premises") }
+  next_node(:you_can_use_result)
 end
 
 #Q13 = how much do you deduct from premises for private use?

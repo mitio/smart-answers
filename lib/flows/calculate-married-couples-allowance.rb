@@ -34,7 +34,6 @@ multiple_choice :were_you_or_your_partner_born_on_or_before_6_april_1935? do
       validate_income: false
     )
   end
-
 end
 
 multiple_choice :did_you_marry_or_civil_partner_before_5_december_2005? do
@@ -74,14 +73,8 @@ money_question :whats_the_husbands_income? do
     raise SmartAnswer::InvalidResponse if responses.last < 1
   end
 
-  next_node do |response|
-    limit = (is_before_april_changes ? 26100.0 : 27000.0)
-    if response.to_f >= limit
-      :paying_into_a_pension?
-    else
-      :husband_done
-    end
-  end
+  next_node_if(:paying_into_a_pension?) { |r| r.to_f >= earner_limit }
+  next_node(:husband_done)
 end
 
 money_question :whats_the_highest_earners_income? do
@@ -91,14 +84,8 @@ money_question :whats_the_highest_earners_income? do
     raise SmartAnswer::InvalidResponse if responses.last < 1
   end
 
-  next_node do |response|
-    limit = (is_before_april_changes ? 26100.0 : 27000.0)
-    if response.to_f >= limit
-      :paying_into_a_pension?
-    else
-      :highest_earner_done
-    end
-  end
+  next_node_if(:paying_into_a_pension?) { |r| r.to_f >= earner_limit }
+  next_node(:highest_earner_done)
 end
 
 multiple_choice :paying_into_a_pension? do
@@ -123,13 +110,8 @@ money_question :how_much_expected_gift_aided_donations? do
     calculator.calculate_adjusted_net_income(income.to_f, (gross_pension_contributions.to_f || 0), (net_pension_contributions.to_f || 0), responses.last)
   end
 
-  next_node do |response|
-    if income_measure == "husband"
-      :husband_done
-    else
-      :highest_earner_done
-    end
-  end
+  next_node_if(:husband_done) { income_measure == "husband" }
+  next_node(:highest_earner_done)
 end
 
 outcome :husband_done do

@@ -31,6 +31,7 @@ date_question :date_of_decision_letter? do
       :cant_challenge_or_appeal
     end
   end
+  permitted_next_nodes(:had_written_explanation?, :cant_challenge_or_appeal)
 end
 
 # Q4
@@ -70,6 +71,8 @@ multiple_choice :had_written_explanation? do
       end
     end
   end
+
+  permitted_next_nodes(:when_did_you_ask_for_it?, :special_circumstances?, :asked_to_reconsider?, :ask_for_an_explanation)
 end
 
 # Q5
@@ -128,6 +131,8 @@ date_question :when_did_you_get_it? do
       :asked_to_reconsider?
     end
   end
+
+  permitted_next_nodes(:special_circumstances?, :asked_to_reconsider?)
 end
 
 # Q7

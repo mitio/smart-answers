@@ -72,16 +72,9 @@ country_select :which_country?, exclude_countries: exclude_countries do
     links
   end
 
-  next_node do |response|
-    if response == "iran"
-      :answer_two_iran
-    elsif response == "syria"
-      :answer_three_syria
-    else
-      :answer_one_generic
-    end
-  end
-
+  next_node_if(:answer_two_iran, responded_with('iran'))
+  next_node_if(:answer_three_syria, responded_with('syria'))
+  next_node(:answer_one_generic)
 end
 
 outcome :answer_one_generic do

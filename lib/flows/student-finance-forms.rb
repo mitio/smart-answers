@@ -3,29 +3,18 @@ satisfies_need "100306"
 
 ## Q1
 multiple_choice :type_of_student? do
-  option :"uk-full-time"
-  option :"uk-part-time"
-  option :"eu-full-time"
-  option :"eu-part-time"
+  option :"uk-full-time" => :form_needed_for_1?
+  option :"uk-part-time" => :form_needed_for_2?
+  option :"eu-full-time" => :what_year?
+  option :"eu-part-time" => :what_year?
 
- save_input_as :student_type
+  save_input_as :student_type
 
   calculate :form_destination do
     if responses.last == 'uk-full-time' or responses.last == 'uk-part-time'
       PhraseList.new(:postal_address_uk)
     else
       PhraseList.new(:postal_address_eu)
-    end
-  end
-
-  next_node do |response|
-    case response.to_s
-    when 'uk-full-time'
-      :form_needed_for_1?
-    when "uk-part-time"
-      :form_needed_for_2?
-    else
-      :what_year?
     end
   end
 end
@@ -36,25 +25,14 @@ multiple_choice :form_needed_for_1? do
   option :"proof-identity"
   option :"income-details"
   option :"apply-dsa"
-  option :"dsa-expenses"
+  option :"dsa-expenses" => :outcome_dsa_expenses
   option :"apply-ccg"
-  option :"ccg-expenses"
-  option :"travel-grant"
+  option :"ccg-expenses" => :outcome_ccg_expenses
+  option :"travel-grant" => :outcome_travel
 
   save_input_as :form_required
 
-  next_node do |response|
-    case response.to_s
-    when 'travel-grant'
-      :outcome_travel
-    when 'ccg-expenses'
-      :outcome_ccg_expenses
-    when 'dsa-expenses'
-      :outcome_dsa_expenses
-    else
-      :what_year?
-    end
-  end
+  next_node(:what_year?)
 end
 
 ## Q2b
@@ -62,18 +40,11 @@ multiple_choice :form_needed_for_2? do
   option :"apply-loans-grants"
   option :"proof-identity"
   option :"apply-dsa"
-  option :"dsa-expenses"
+  option :"dsa-expenses" => :outcome_dsa_expenses
 
   save_input_as :form_required
 
-  next_node do |response|
-    case response.to_s
-    when 'dsa-expenses'
-      :outcome_dsa_expenses
-    else
-      :what_year?
-    end
-  end
+  next_node(:what_year?)
 end
 
 ## Q3
@@ -83,51 +54,26 @@ multiple_choice :what_year? do
 
   save_input_as :year_required
 
-  next_node do |response|
-    if student_type == 'uk-full-time' or student_type == 'uk-part-time'
-      if form_required == 'apply-loans-grants'
-        :continuing_student?
-      elsif form_required == 'proof-identity'
-        if response == 'year-1314'
-          if student_type == 'uk-full-time'
-            :outcome_proof_identity_1314
-          else
-            :outcome_proof_identity_1314_pt
-          end
-        else
-          :outcome_proof_identity_1415
-        end
-      elsif form_required == 'income-details'
-        if response == 'year-1314'
-          :outcome_parent_partner_1314
-        else
-          :outcome_parent_partner_1415
-        end
-      elsif form_required == 'apply-dsa'
-        if response == 'year-1314'
-          if student_type == 'uk-full-time'
-            :outcome_dsa_1314
-          else
-            :outcome_dsa_1314_pt
-          end
-        else
-          if student_type == 'uk-part-time'
-            :outcome_dsa_1415_pt
-          else
-            :outcome_dsa_1415
-          end
-        end
-      elsif form_required == 'apply-ccg'
-        if response == 'year-1314'
-          :outcome_ccg_1314
-        else
-          :outcome_ccg_1415
-        end
+  on_condition(variable_matches(:student_type, %w{uk-full-time uk-part-time})) do
+    on_condition(responded_with('year-1314')) do
+      on_condition(variable_matches(:student_type, 'uk-part-time')) do
+        next_node_if(:outcome_proof_identity_1314_pt, variable_matches(:form_required, 'proof-identity'))
+        next_node_if(:outcome_dsa_1314_pt, variable_matches(:form_required, 'apply-dsa'))
       end
-    else
-      :continuing_student?
+      next_node_if(:outcome_proof_identity_1314, variable_matches(:form_required, 'proof-identity'))
+      next_node_if(:outcome_parent_partner_1314, variable_matches(:form_required, 'income-details'))
+      next_node_if(:outcome_dsa_1314, variable_matches(:form_required, 'apply-dsa'))
+      next_node_if(:outcome_ccg_1314, variable_matches(:form_required, 'apply-ccg'))
     end
+    on_condition(variable_matches(:student_type, 'uk-part-time')) do
+      next_node_if(:outcome_dsa_1415_pt, variable_matches(:form_required, 'apply-dsa'))
+    end
+    next_node_if(:outcome_proof_identity_1415, variable_matches(:form_required, 'proof-identity'))
+    next_node_if(:outcome_parent_partner_1415, variable_matches(:form_required, 'income-details'))
+    next_node_if(:outcome_dsa_1415, variable_matches(:form_required, 'apply-dsa'))
+    next_node_if(:outcome_ccg_1415, variable_matches(:form_required, 'apply-ccg'))
   end
+  next_node(:continuing_student?)
 end
 
 ## Q4
@@ -136,61 +82,43 @@ multiple_choice :continuing_student? do
   option :"new-student"
 
   save_input_as :continuing_student_state
-  next_node do |response|
 
-    if student_type == "uk-full-time"
-      if form_required == "apply-loans-grants"
-        if year_required == "year-1314"
-          if response == "continuing-student"
-            :outcome_uk_ft_1314_continuing
-          else
-            :outcome_uk_ft_1314_new
-          end
-        elsif year_required == 'year-1415'
-          if response == 'continuing-student'
-            :outcome_uk_ft_1415_continuing
-          else
-            :outcome_uk_ft_1415_new
-          end
-        end
-      end
+  on_condition(variable_matches(:student_type, "uk-part-time")) do
+    next_node_if(:pt_course_start?, variable_matches(:form_required, 'apply-loans-grants'))
+  end
 
-    elsif student_type == 'uk-part-time'
-      if form_required == 'apply-loans-grants'
-        :pt_course_start?
-      end
-
-    elsif student_type == 'eu-full-time'
-      if year_required == "year-1314"
-        if response == 'continuing-student'
-          :outcome_eu_ft_1314_continuing
-        else
-          :outcome_eu_ft_1314_new
-        end
-      elsif year_required == "year-1415"
-        if response == 'continuing-student'
-          :outcome_eu_ft_1415_continuing
-        else
-          :outcome_eu_ft_1415_new
-        end
-      end
-
-    elsif student_type == 'eu-part-time'
-      if year_required == 'year-1314'
-        if response == 'continuing-student'
-          :outcome_eu_pt_1314_continuing
-        else
-          :outcome_eu_pt_1314_new
-        end
-      elsif year_required == 'year-1415'
-        if response == 'continuing-student'
-          :outcome_eu_pt_1415_continuing
-        else
-          :outcome_eu_pt_1415_new
-        end
+  on_condition(variable_matches(:year_required, "year-1314")) do
+    on_condition(variable_matches(:student_type, "uk-full-time")) do
+      on_condition(variable_matches(:form_required, "apply-loans-grants")) do
+        next_node_if(:outcome_uk_ft_1314_continuing, responded_with('continuing-student'))
+        next_node(:outcome_uk_ft_1314_new)
       end
     end
+    on_condition(variable_matches(:student_type, "eu-full-time")) do
+      next_node_if(:outcome_eu_ft_1314_continuing, responded_with('continuing-student'))
+      next_node(:outcome_eu_ft_1314_new)
+    end
+    on_condition(variable_matches(:student_type, "eu-part-time")) do
+      next_node_if(:outcome_eu_pt_1314_continuing, responded_with('continuing-student'))
+      next_node(:outcome_eu_pt_1314_new)
+    end
+  end
 
+  on_condition(variable_matches(:year_required, "year-1415")) do
+    on_condition(variable_matches(:student_type, "uk-full-time")) do
+      on_condition(variable_matches(:form_required, "apply-loans-grants")) do
+        next_node_if(:outcome_uk_ft_1415_continuing, responded_with('continuing-student'))
+        next_node(:outcome_uk_ft_1415_new)
+      end
+    end
+    on_condition(variable_matches(:student_type, "eu-full-time")) do
+      next_node_if(:outcome_eu_ft_1415_continuing, responded_with('continuing-student'))
+      next_node(:outcome_eu_ft_1415_new)
+    end
+    on_condition(variable_matches(:student_type, "eu-part-time")) do
+      next_node_if(:outcome_eu_pt_1415_continuing, responded_with('continuing-student'))
+      next_node(:outcome_eu_pt_1415_new)
+    end
   end
 end
 
@@ -199,40 +127,16 @@ multiple_choice :pt_course_start? do
   option :"course-start-before-01092012"
   option :"course-start-after-01092012"
 
-  next_node do |response|
-    if student_type == 'uk-part-time'
-      if form_required == 'apply-loans-grants'
-        if year_required == 'year-1314'
-          if continuing_student_state == 'continuing-student'
-            if response == 'course-start-before-01092012'
-              :outcome_uk_pt_1314_grant
-            else
-              :outcome_uk_pt_1314_continuing
-            end
-          elsif continuing_student_state == 'new-student'
-            if response == 'course-start-before-01092012'
-              :outcome_uk_pt_1314_grant
-            else
-              :outcome_uk_pt_1314_new
-            end
-          end
-        elsif year_required == 'year-1415'
-          if continuing_student_state == 'continuing-student'
-            if response == 'course-start-before-01092012'
-              :outcome_uk_pt_1415_grant
-            else
-              :outcome_uk_pt_1415_continuing
-            end
-          elsif continuing_student_state == 'new-student'
-            if response == 'course-start-before-01092012'
-              :outcome_uk_pt_1415_grant
-            else
-              :outcome_uk_pt_1415_new
-            end
-          end
-        end
-      end
-    end
+  on_condition(variable_matches(:year_required, 'year-1314')) do
+    next_node_if(:outcome_uk_pt_1314_grant, responded_with('course-start-before-01092012'))
+    next_node_if(:outcome_uk_pt_1314_continuing, variable_matches(:continuing_student_state, 'continuing-student'))
+    next_node_if(:outcome_uk_pt_1314_new, variable_matches(:continuing_student_state, 'new-student'))
+  end
+
+  on_condition(variable_matches(:year_required, 'year-1415')) do
+    next_node_if(:outcome_uk_pt_1415_grant, responded_with('course-start-before-01092012'))
+    next_node_if(:outcome_uk_pt_1415_continuing, variable_matches(:continuing_student_state, 'continuing-student'))
+    next_node_if(:outcome_uk_pt_1415_new, variable_matches(:continuing_student_state, 'new-student'))
   end
 end
 

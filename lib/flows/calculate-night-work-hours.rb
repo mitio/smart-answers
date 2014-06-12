@@ -12,16 +12,9 @@ multiple_choice :exception_to_limits? do
 end
 
 value_question :how_many_night_hours_worked? do
-  next_node do |response|
-    hours = response.to_i
-    if hours < 1
-      raise SmartAnswer::InvalidResponse
-    elsif hours > 3
-      :taken_rest_period?
-    else
-      :not_a_night_worker
-    end
-  end
+  next_node_if(:taken_rest_period?) { |hours| hours.to_i > 3 }
+  next_node_if(:not_a_night_worker) { |hours| hours.to_i > 1 }
+  next_node { raise SmartAnswer::InvalidResponse }
 end
 
 multiple_choice :taken_rest_period? do
@@ -91,16 +84,9 @@ value_question :hours_per_night? do
 
   save_input_as :hours_per_shift
 
-  next_node do |response|
-    hours = Integer(response)
-    if hours < 4
-      :not_a_night_worker
-    elsif hours >= 4 and hours <= 13
-      :overtime_hours?
-    else
-      :limit_exceeded
-    end
-  end
+  next_node_if(:not_a_night_worker) { |hours| hours.to_i < 4 }
+  next_node_if(:limit_exceeded) { |hours| hours.to_i > 13 }
+  next_node(:overtime_hours?)
 end
 
 value_question :overtime_hours? do
@@ -124,19 +110,16 @@ value_question :overtime_hours? do
     calculator.potential_days
   end
 
-  next_node do |response|
+  next_node_if(:within_legal_limit) do |response|
     calculator = Calculators::NightWorkHours.new(
       weeks_worked: weeks_worked, weeks_leave: weeks_leave,
       work_cycle: work_cycle, nights_in_cycle: nights_in_cycle,
       hours_per_shift: hours_per_shift, overtime_hours: response.to_i
     )
 
-    if calculator.average_hours < 9
-      :within_legal_limit
-    else
-      :outside_legal_limit
-    end
+    calculator.average_hours < 9
   end
+  next_node(:outside_legal_limit)
 end
 
 outcome :not_old_enough

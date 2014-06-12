@@ -75,6 +75,7 @@ date_question :when_submitted? do
       :when_paid?
     end
   end
+  permitted_next_nodes(:when_paid?)
 end
 
 date_question :when_paid? do
@@ -101,6 +102,7 @@ date_question :when_paid? do
       end
     end
   end
+  permitted_next_nodes(:filed_and_paid_on_time, :how_much_tax?)
 end
 
 money_question :how_much_tax? do

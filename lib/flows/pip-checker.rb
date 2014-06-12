@@ -28,28 +28,21 @@ end
 date_question :what_is_your_dob? do
   from { Date.today - 100.years }
   to { Date.today }
-  next_node do |response|
+
+  next_node_calculation(:calculator) do |response|
     calculator.dob = Date.parse(response)
-    if getting_dla
-      if calculator.in_group_65?
-        :result_6
-      elsif calculator.turning_16_before_oct_2013?
-        :result_4
-      elsif calculator.in_middle_group?
-        :result_7
-      else
-        :result_5
-      end
-    else
-      if calculator.is_65_or_over?
-        :result_2
-      elsif calculator.is_16_to_64?
-        :result_3
-      else
-        :result_1
-      end
-    end
+    calculator
   end
+
+  on_condition(->(_) {getting_dla}) do
+    next_node_if(:result_6) { calculator.in_group_65? }
+    next_node_if(:result_4) { calculator.turning_16_before_oct_2013? }
+    next_node_if(:result_7) { calculator.in_middle_group? }
+    next_node(:result_5)
+  end
+  next_node_if(:result_2) { calculator.is_65_or_over? }
+  next_node_if(:result_3) { calculator.is_16_to_64? }
+  next_node(:result_1)
 end
 
 outcome :result_1

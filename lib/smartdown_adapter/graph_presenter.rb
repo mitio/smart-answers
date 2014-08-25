@@ -81,6 +81,8 @@ module SmartdownAdapter
             text << word_wrap(node.title.to_s)
             text << "\n\n"
           end
+          text << word_wrap(node.title.to_s)
+          text << "\n\n"
           node.questions.each do |question|
             text << word_wrap(question.title.to_s)
             text << "\n\n"

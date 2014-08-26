@@ -166,4 +166,8 @@ class SmartAnswerPresenter
       end
     end
   end
+
+  def display_page_titles?
+    false
+  end
 end

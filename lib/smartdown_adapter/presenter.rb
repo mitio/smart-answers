@@ -33,6 +33,15 @@ module SmartdownAdapter
       current_node.questions
     end
 
+    def display_page_titles?
+      @smartdown_flow.question_pages.each do |question_page|
+        if question_page.questions.count > 1
+          return true
+        end
+      end
+      false
+    end
+
     def current_node
       @current_node ||= presenter_for_current_node
     end
